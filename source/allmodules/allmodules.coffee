@@ -1,13 +1,17 @@
-import * as configmodule from "./configmodule"
-import * as debugmodule from "./debugmodule"
-import * as scimodule from "./scimodule"
-import * as startupmodule from "./startupmodule"
+import * as configmodule from "./configmodule.js"
+import * as debugmodule from "./debugmodule.js"
+import * as scimodule from "./scimodule.js"
+import * as serverstatemodule from "./serverstatemodule.js"
+import * as startupmodule from "./startupmodule.js"
+import * as wsimodule from "./wsimodule.js"
 
 Modules = {
     configmodule,
     debugmodule,
     scimodule,
+    serverstatemodule,
     startupmodule,
+    wsimodule,
 }
 
 export default Modules
