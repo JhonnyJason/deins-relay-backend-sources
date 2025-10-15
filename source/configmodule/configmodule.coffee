@@ -17,4 +17,7 @@ catch err
 
 ############################################################
 export openAIKey = localCfg.openAIKey || "none"
+export assistantID = localCfg.assistantID || "none"
 export passphrase = localCfg.passphrase || "I shall pass!"
+
+export deins_prompt_1_id = "pmpt_68ee58f82f188190a14cd2a2899a25f60f4cac5098d729bb"
