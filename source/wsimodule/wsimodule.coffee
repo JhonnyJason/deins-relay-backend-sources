@@ -32,6 +32,7 @@ class SocketConnection
             switch command
                 when "authorizeMe" then authorizationProcess(@socket)
                 when "retrieveInterference" then interferenceProcess(@socket, arg)
+                when "resetHistory" then resetHistoryProces(@socket), arg
                 else throw new Error("unknown command: #{command}")
 
         catch err then log err
@@ -64,4 +65,5 @@ export onConnect = (socket, req) ->
     olog req.body 
     conn = new SocketConnection(socket, "#{clientIdCount}")
     clientIdCount++
+    ## TODO 
     return
