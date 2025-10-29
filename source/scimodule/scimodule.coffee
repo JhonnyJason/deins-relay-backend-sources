@@ -10,9 +10,8 @@ import * as sciBase from "thingy-sci-ws-base"
 
 import { onConnect } from "./wsimodule.js"
 import { getState } from "./serverstatemodule.js"
-import { passphrase } from "./configmodule.js"
 
-import * as chatRelay from "./chatrelaymodule.js"
+import { checkOrThrow } from "./earlyblockermodule.js"
 
 #endregion
 
@@ -22,39 +21,23 @@ returnCurrentState = (req, res) ->
     return
 
 ############################################################
-relaySingleCompletion = (req, res) ->
-    try
-        msg = req.body.message
+rejectForbidden = (req, res, next) ->
+    ip = req.ip
+    origin = req.origin
+    try checkOrThrow(ip, origin)
+    catch err then return res.status(403).send('Denied!')
 
-        completion = await chatRelay.singleCompletion(msg)
-        res.send(completion)
-    catch err then res.status(500).send(err.message)
-    return
-
-############################################################
-relayChat = (req, res) ->
-    try
-        msg = req.body.message
-        chatId = req.body.chatId
-
-        completion = await chatRelay.chatCompletion(msg)
-        res.send(completion)
-    catch err then res.status(500).send(err.message)
-    return
+    return next()
 
 ############################################################
 export prepareAndExpose = ->
     log "prepareAndExpose"
 
-    sciBase.prepareAndExpose(null, 
-        { 
-            "getState": returnCurrentState,
-            "relaySingle": relaySingleCompletion,
-            "relayChat": relayChat
-        }
-    )
+    routes = {
+        "getState": returnCurrentState
+    }
 
+    sciBase.prepareAndExpose( rejectForbidden, routes )
     sciBase.onWebsocketConnect("/", onConnect)
     log "Server listening!"
-    log "passphrase is: #{passphrase}"
     return

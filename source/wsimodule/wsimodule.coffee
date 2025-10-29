@@ -27,10 +27,11 @@ class SocketConnection
             if commandEnd < 0 then command = message # no argument
             else
                 command = message.substring(0, commandEnd)
-                postCommand = message.substring(commandEnd).trim()
+                arg = message.substring(commandEnd).trim()
 
             switch command
-                when "completion" then relayCompletionQuery(@socket)
+                when "authorizeMe" then authorizationProcess(@socket)
+                when "retrieveInterference" then interferenceProcess(@socket, arg)
                 else throw new Error("unknown command: #{command}")
 
         catch err then log err
@@ -44,6 +45,7 @@ class SocketConnection
         return
     
 ############################################################
+#region started Processes on specific Commands
 relayCompletionQuery = (socket) -> 
     log "relayCompletionQuery"
     try
@@ -52,6 +54,9 @@ relayCompletionQuery = (socket) ->
         socket.send(response)
     catch err then log err
     return
+
+
+#
 
 
 ############################################################
