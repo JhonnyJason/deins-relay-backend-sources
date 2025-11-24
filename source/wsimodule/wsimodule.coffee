@@ -5,6 +5,11 @@ import { createLogFunctions } from "thingy-debug"
 #endregion
 
 ############################################################
+import {
+    authorizationProcess, interferenceProcess, resetHistoryProcess
+} from "./commandprocessing.js"
+
+############################################################
 clientIdCount = 0
 
 ############################################################
@@ -16,7 +21,7 @@ class SocketConnection
         @socket.onclose = (evnt) -> self.onDisconnect(evnt)
         log "#{@clientId} connected!"
 
-    onMessage: (evnt) ->
+    onMessage: (evnt) =>
         log "onMessage"
         try
             message = evnt.data
@@ -30,9 +35,11 @@ class SocketConnection
                 arg = message.substring(commandEnd).trim()
 
             switch command
-                when "authorizeMe" then authorizationProcess(@socket)
-                when "retrieveInterference" then interferenceProcess(@socket, arg)
-                when "resetHistory" then resetHistoryProces(@socket), arg
+                when "ping" then @socket.send("pong")
+                when "authorizeMe" then authorizationProcess(this, arg)
+                when "interference" then interferenceProcess(this, arg)
+                when "resetHistory" then resetHistoryProcess(this, arg)
+                when "sendState" then sendSessionState(this)
                 else throw new Error("unknown command: #{command}")
 
         catch err then log err
@@ -44,21 +51,21 @@ class SocketConnection
             #TODO implment some unsubscribing  
         catch err then log err
         return
-    
-############################################################
-#region started Processes on specific Commands
-relayCompletionQuery = (socket) -> 
-    log "relayCompletionQuery"
-    try
-        log "Not yet Inquiring for Completion..."
-        response = "We don't do this yet."
-        socket.send(response)
-    catch err then log err
-    return
 
+    aiResponseStart: -> @socket.send("ai:")
+    aiResponseStream: (fragment) -> @socket.send("ai+ "+fragment)
+    aiResponseEnd: -> @socket.send("ai/")
 
-#
+    setSession: (key) ->
+        @key = key
+        @socket.send("key "+key)
+        return
 
+    noticeInvalidKey: -> @socket.send("err InvalidKey")
+    noticeMessageLimitReached: -> @socket.send("err MessageLimit")
+    noticeTooFast: -> @socket.send("err TooFast")
+
+    noticeState: (stateString) -> @socket.send("stt "+stateString)
 
 ############################################################
 export onConnect = (socket, req) ->
@@ -67,3 +74,5 @@ export onConnect = (socket, req) ->
     clientIdCount++
     ## TODO 
     return
+
+

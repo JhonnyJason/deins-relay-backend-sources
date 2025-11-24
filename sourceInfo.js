@@ -1,8 +1,10 @@
 module.exports = {
     getDependencies: () => {
         return {
-    	    "thingy-sci-ws-base":"^0.0.1",
-            "openai": "^6.3.0"
+            "openai": "^6.9.1",
+            "memory-decay": "^0.0.3",
+            "thingy-byte-utils": "^0.0.8",
+            "ws": "^8.18.3"
         }
     }
 }

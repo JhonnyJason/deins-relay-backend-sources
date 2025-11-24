@@ -20,18 +20,38 @@ export initialize = ->
     return
 
 
-############################################################
-export checkOrThrow = (ip, origin) ->
-    log "checkOrThrow"
+extractMetaData = (req) ->
+    meta = Object.create(null)
 
+    ## remote ip address
+    forwardedFor = req.headers['x-forwarded-for']
+    ## usually forwarded -> first entry in the list
+    if typeof forwardedFor == "string" and forwardedFor.length > 6
+        meta.ip = forwardedFor.split(",")[0]
+    else meta.ip = req.socket.remoteAddress
+
+    ## used hostname and user agent
+    meta.host = req.headers['host']
+    meta.userAgent = req.headers['user-agent']
+    return meta
+
+############################################################
+export isBlocked = (ip, origin) ->
+    log "isBlocked"
+    ##TODO reimplement to analyse req instead of get ip and origin directly
+    return false
+
+    
     if blockedIPs.has(ip)
         log "blocked request with IP: #{ip}"
-        throw new Error("IP blocked!")
+        return "IP blocked!"
     
     if !legalOrigins.has(origin)
         log "blocked request with origin: #{origin}"
         blockedIPs.add(ip)
-        throw new Error("Illegal Origin!")
+        # console.error("Request failed due to blocked origin!")
+        # console.error("Origin: #{origin}, IP:#{ip}")
+        return "Illegal Origin!"
     
     log "passed!"
     return

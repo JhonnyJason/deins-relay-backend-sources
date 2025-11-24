@@ -5,36 +5,43 @@ import { createLogFunctions } from "thingy-debug"
 #endregion
 
 ############################################################
-import * as cfg from "./configmodule.js"
-
-############################################################
 import OpenAI from "openai"
 
 ############################################################
 openAIClient = null
+promptId = null
 
 ############################################################
-export initialize = ->
+export initialize = (c) ->
     log "initialize"
-    #Implement or Remove :-)
-    openAIClient = new OpenAI( { apiKey: cfg.openAIKey } )
+    promptId = c.deins_prompt_1_id
+    openAIClient = new OpenAI( { apiKey: c.openAIKey } )
+    # log c.openAIKey
     return
 
 ############################################################
-export singleCompletion = (msg, authCode) ->
-    log "singleCompletion"
+export generateStreamResponse = (msgs, conn) ->
+    log "generateStreamResponse"
 
-    oldMessages
     options = {
-        prompt: {
-            id: cfg.deins_prompt_1_id
-        }
-        
+        input: msgs,
+        stream: true,
+        prompt: { id: promptId }
     }
 
-    log "Sending starting request..."
-    olog {options}
+    stream = await openAIClient.responses.create(options)
 
-    response = await openAIClient.responses.create(options)
-    log "Successfully retrieved Response!"
-    return response.output_text
+    conn.aiResponseStart()
+    ## Use async Iterator
+    for await evnt from stream then processEvent(evnt, conn)
+
+    conn.aiResponseEnd()
+    return
+
+############################################################
+processEvent = (evnt, sk) ->
+    switch evnt.type
+        when "response.output_text.delta"
+            sk.aiResponseStream(evnt.delta)
+        else olog evnt.type
+    return

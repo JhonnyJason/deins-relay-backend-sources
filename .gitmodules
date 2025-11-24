@@ -1,0 +1,3 @@
+[submodule "source/scicoremodule"]
+	path = source/scicoremodule
+	url = git@github.com:JhonnyJason/service-sources-scicoremodule.git

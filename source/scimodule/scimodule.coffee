@@ -6,38 +6,38 @@ import { createLogFunctions } from "thingy-debug"
 
 ############################################################
 #region modules from the Environment
-import * as sciBase from "thingy-sci-ws-base"
+import { WebSocketServer } from "ws"
 
+############################################################
+import * as bs from "./bugsnitch.js"
+
+############################################################
+import * as scicore from "./scicoremodule.js"
+
+############################################################
 import { onConnect } from "./wsimodule.js"
-import { getState } from "./serverstatemodule.js"
-
-import { checkOrThrow } from "./earlyblockermodule.js"
+import { isBlocked } from "./earlyblockermodule.js"
 
 #endregion
 
+
 ############################################################
-returnCurrentState = (req, res) ->
-    res.send(getState())
+wsS = new WebSocketServer({noServer: true})
+wsS.on("connection", onConnect)
+
+############################################################
+wsUpgradeHandler = (req, sock, head) ->
+    if isBlocked(req)
+        # sock.write('HTTP/1.1 403 Forbidden\r\n\r\n')
+        # sock.destroy()
+        sock.end('HTTP/1.1 403 Forbidden\r\n\r\n')
+        return
+    wsS.handleUpgrade(req, sock, head, ((ws) -> wsS.emit("connection", ws, req)))
     return
-
-############################################################
-rejectForbidden = (req, res, next) ->
-    ip = req.ip
-    origin = req.origin
-    try checkOrThrow(ip, origin)
-    catch err then return res.status(403).send('Denied!')
-
-    return next()
 
 ############################################################
 export prepareAndExpose = ->
     log "prepareAndExpose"
-
-    routes = {
-        "getState": returnCurrentState
-    }
-
-    sciBase.prepareAndExpose( rejectForbidden, routes )
-    sciBase.onWebsocketConnect("/", onConnect)
-    log "Server listening!"
+    scicore.setUpgradeHandler(wsUpgradeHandler)
+    await scicore.sciStartServer()
     return
