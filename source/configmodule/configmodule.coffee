@@ -23,9 +23,16 @@ export openAIKey = localCfg.openAIKey || "none"
 
 ############################################################
 export deins_prompt_1_id = "pmpt_68ee58f82f188190a14cd2a2899a25f60f4cac5098d729bb"
-export legalOrigins = ["https://localhost"]
+export legalHostnames = ["localhost", "assboto-dev.dotv.ee"]
 export ttlSessionMS = 7_200_000 # ~2h 
 export messageLimit = 66
+# export probationPeriodMS = 14_400_000 # ~4h
+export probationPeriodMS = 120_000 # ~2m
+
+############################################################
+export userMessageSizeLimit = 4096
+# export apiUsageLimit = 150
+# export apiUsageResetMS = 86_400_000 # ~24h
 
 ############################################################
 export name = "Deins Relay"

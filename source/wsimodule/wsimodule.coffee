@@ -5,24 +5,47 @@ import { createLogFunctions } from "thingy-debug"
 #endregion
 
 ############################################################
+import * as bs from "./bugsnitch.js"
+############################################################
 import {
     authorizationProcess, interferenceProcess, resetHistoryProcess
 } from "./commandprocessing.js"
 
 ############################################################
+import { blockIp } from "./earlyblockermodule.js"
+
+############################################################
 clientIdCount = 0
+keyToConnection = Object.create(null)
+
+############################################################
+timeBlockMS = 10_000 # ~10s
+usageLimit = 3
+usageViolation = 4
 
 ############################################################
 class SocketConnection
-    constructor: (@socket, @clientId) ->
+    constructor: (@socket, @clientId, @meta) ->
         # preseve that "this" is this class
         self = this
         @socket.onmessage = (evnt) -> self.onMessage(evnt)
         @socket.onclose = (evnt) -> self.onDisconnect(evnt)
         log "#{@clientId} connected!"
+        @usage = 0
+        @interval = setInterval(self.usageRelief, timeBlockMS)
+
+
+    usageRelief: => 
+        @usage -= usageLimit
+        if @usage < 0 then @usage = 0
+        return 
 
     onMessage: (evnt) =>
         log "onMessage"
+        @usage++
+        if @usage == usageLimit then return @noticeTooFast()
+        if @usage == usageViolation then return @blockThis()
+        
         try
             message = evnt.data
             log "#{message}"
@@ -45,32 +68,53 @@ class SocketConnection
         catch err then log err
         return
 
-    onDisconnect: (evnt) ->
+    onDisconnect: (evnt) =>
         log "onDisconnect: #{@clientId}"
         try
-            #TODO implment some unsubscribing  
+            key = ""+@meta.ip+":"+@meta.host+"("+@meta.userAgent+")"
+            delete keyToConnection[key]
+            @socket = null
+            clearInterval(@interval)
+            return
         catch err then log err
         return
 
-    aiResponseStart: -> @socket.send("ai:")
-    aiResponseStream: (fragment) -> @socket.send("ai+ "+fragment)
-    aiResponseEnd: -> @socket.send("ai/")
+    aiResponseStart: => @socket.send("ai:")
+    aiResponseStream: (fragment) => @socket.send("ai+ "+fragment)
+    aiResponseEnd: => @socket.send("ai/")
 
-    setSession: (key) ->
+    setSession: (key) =>
         @key = key
         @socket.send("key "+key)
         return
 
-    noticeInvalidKey: -> @socket.send("err InvalidKey")
-    noticeMessageLimitReached: -> @socket.send("err MessageLimit")
-    noticeTooFast: -> @socket.send("err TooFast")
+    noticeInvalidKey: => @socket.send("err InvalidKey")
+    noticeMessageLimitReached: => @socket.send("err MessageLimit")
+    noticeTooFast: => @socket.send("err TooFast")
+    noticeMessageTooLarge: => @socket.send("err MessageTooLarge")
+    noticeApiUsageLimitReached: => @socket.sedn("err ApiUsageLimit")
 
-    noticeState: (stateString) -> @socket.send("stt "+stateString)
+    noticeState: (stateString) => @socket.send("stt "+stateString)
+
+    blockThis: ->
+        log "blockThis"
+        bs.report("@wsimodule.blockThis usage violoation occured! (#{@meta.ip})")
+        return unless @socket?
+        @socket.close()
+        @socket = null
+        @onDisconnect() ## maybe unnecessary
+
+        log "blockedIP is: "+@meta.ip
+        blockIp(@meta.ip)
+        return
+
 
 ############################################################
 export onConnect = (socket, req) ->
-    olog req.body 
-    conn = new SocketConnection(socket, "#{clientIdCount}")
+    log "onConnect"
+    meta = req.meta
+    key = ""+meta.ip+":"+meta.host+"("+meta.userAgent+")"
+    conn = new SocketConnection(socket, "#{clientIdCount}", meta)
     clientIdCount++
     ## TODO 
     return

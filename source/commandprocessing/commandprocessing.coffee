@@ -5,6 +5,8 @@ import { createLogFunctions } from "thingy-debug"
 #endregion
 
 ############################################################
+import * as bs from "./bugsnitch.js"
+############################################################
 import * as chat from "./chatrelaymodule.js"
 import * as sess from "./sessionmodule.js"
 import * as cfg from "./configmodule.js"
@@ -13,7 +15,7 @@ import * as cfg from "./configmodule.js"
 export sendSessionState = (conn) ->
     log "endSessionState"
     key = conn.key
-    if !sess.isValid(key) then return conn.sendState("InvalidKey")
+    if !sess.isValid(key) then return conn.noticeState("InvalidKey")
     conn.noticeState(sess.getState(key))
     return
 
@@ -38,6 +40,17 @@ export interferenceProcess = (conn, msg) ->
             sess.setState(key, "MessageLimitReached")
             console.error("User reached the messageLimit!")
             return
+        
+        state = sess.getState(key)
+        if state != "Idle"
+            conn.noticeTooFast()
+            console.error("Attempt to request new Interference while not idle!")
+            return
+
+        if msg.length  > cfg.userMessageSizeLimit
+            conn.noticeMessageTooLarge()
+            console.error("Message from user exceeded size Limit! (#{msg.length})")
+            return
 
         sess.addUserMessage(key, msg)
         sess.setState(key, "Processing")
@@ -47,9 +60,14 @@ export interferenceProcess = (conn, msg) ->
     catch err then console.error(err)
     return 
 
-export resetHistoryProcess = (conn, arg) ->
+export resetHistoryProcess = (conn) ->
     log "resetHistoryProcess"
-    log arg
-    log "Not implemented!"
+    key = conn.key
+    state = sess.getState(key)
+    if state != "Idle"
+        conn.noticeTooFast()
+        console.error("Attempt to resetHistory while not idle!")
+        return
+    
+    sess.clearSession(key)
     return
-

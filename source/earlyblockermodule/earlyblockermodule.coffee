@@ -8,18 +8,35 @@ import { createLogFunctions } from "thingy-debug"
 import * as cfg from "./configmodule.js"
 
 ############################################################
-legalOrigins = new Set()
+legalHostnames = new Set()
 blockedIPs = new Set()
+probationIPs = new Set()
 
 ############################################################
-export initialize = ->
+export initialize = (c) ->
     log "initialize"
-    legalOrigins.add(o) for o in cfg.legalOrigins
-    content = new Array(...legalOrigins)
-    log "legalOrigins: #{content}"   
+    if c.legalHostnames? 
+        legalHostnames.add(o) for o in c.legalHostnames
+    
+    if c.probationPeriodMS? then probationPeriodMS = c.probationPeriodMS
+    else probationPeriodMS = 7_200_000
+
+    content = new Array(...legalHostnames)
+    log "legalHostnames: #{content}"
+    setInterval(reorderBlocked, probationPeriodMS)
     return
 
 
+############################################################
+reorderBlocked = ->
+    log "reorderBlocked"
+    toFree = Array.from(probationIPs)
+    blockedIPs.delete(ip) for ip in toFree
+
+    probationIPs = new Set(blockedIPs)
+    return
+
+############################################################
 extractMetaData = (req) ->
     meta = Object.create(null)
 
@@ -36,26 +53,29 @@ extractMetaData = (req) ->
     return meta
 
 ############################################################
-export isBlocked = (ip, origin) ->
+export isBlocked = (req) ->
     log "isBlocked"
-    ##TODO reimplement to analyse req instead of get ip and origin directly
-    return false
+    meta = extractMetaData(req)
+    req.meta = meta
+    olog meta
+    # return false
 
-    
-    if blockedIPs.has(ip)
-        log "blocked request with IP: #{ip}"
+    if blockedIPs.has(meta.ip)
+        log "blocked request with IP: #{meta.ip}"
         return "IP blocked!"
     
-    if !legalOrigins.has(origin)
-        log "blocked request with origin: #{origin}"
-        blockedIPs.add(ip)
-        # console.error("Request failed due to blocked origin!")
-        # console.error("Origin: #{origin}, IP:#{ip}")
-        return "Illegal Origin!"
+    if !legalHostnames.has(meta.host)
+        log "blocked request with origin: #{meta.host}"
+        blockedIPs.add(meta.ip)
+        # console.error("Request failed due to blocked Hostname!")
+        # console.error("Hostname: #{meta.host}, IP:#{meta.ip}")
+        return "Illegal Hostname!"
     
     log "passed!"
     return
 
-
 ############################################################
-export blockIp = (ip) -> blockedIPs.add(ip)
+export blockIp = (ip) -> 
+    blockedIPs.add(ip)
+    probationIPs.delete(ip)
+    return

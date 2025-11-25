@@ -6,22 +6,43 @@ import { createLogFunctions } from "thingy-debug"
 
 ############################################################
 import OpenAI from "openai"
+############################################################
+import * as bs from "./bugsnitch.js"
 
 ############################################################
 openAIClient = null
 promptId = null
+usage = 0
+
+############################################################
+usageLimit = 30
 
 ############################################################
 export initialize = (c) ->
     log "initialize"
     promptId = c.deins_prompt_1_id
     openAIClient = new OpenAI( { apiKey: c.openAIKey } )
-    # log c.openAIKey
+    
+    if c.apiUsageLimit? then usageLimit = c.apiUsageLimit
+    
+    if c.apiUsageResetMS? then usageResetMS = c.apiUsageResetMS
+    else usageResetMS = 18_000_000 # ~5h
+    
+    setInterval(usageReset, usageResetMS)
     return
+
+############################################################
+usageReset = -> usage = 0
 
 ############################################################
 export generateStreamResponse = (msgs, conn) ->
     log "generateStreamResponse"
+    log "currentUsage "+usage
+
+    if usage == usageLimit 
+        conn.noticeApiUsageLimitReached()
+        bs.report("@generateStreamResponse API usage Limit reached! (#{usage})")
+        return
 
     options = {
         input: msgs,
@@ -29,13 +50,16 @@ export generateStreamResponse = (msgs, conn) ->
         prompt: { id: promptId }
     }
 
-    stream = await openAIClient.responses.create(options)
+    try
+        usage++
+        stream = await openAIClient.responses.create(options)
 
-    conn.aiResponseStart()
-    ## Use async Iterator
-    for await evnt from stream then processEvent(evnt, conn)
+        conn.aiResponseStart()
+        ## Use async Iterator
+        for await evnt from stream then processEvent(evnt, conn)
 
-    conn.aiResponseEnd()
+        conn.aiResponseEnd()
+    catch err then console.error(err)
     return
 
 ############################################################

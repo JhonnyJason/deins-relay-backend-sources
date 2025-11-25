@@ -51,6 +51,13 @@ createNewSession = ->
     return key
 
 ############################################################
+export clearSession = (k) -> 
+    sessionObj = keyToSession[k]
+    sessionObj.msgs = []
+    sessionObj.lastInteraction = Date.now()
+    return
+
+############################################################
 export addAssMessage = (k, msg) ->
     log "addAssMessage"
     msgObj = { role: "assistant", content: msg }
@@ -60,7 +67,9 @@ export addAssMessage = (k, msg) ->
 export addUserMessage = (k, msg) ->
     log "addUserMessage"
     msgObj = { role: "user", content: msg }
-    keyToSession[k].msgs.push(msgObj)
+    sessionObj = keyToSession[k]
+    sessionObj.msgs.push(msgObj)
+    sessionObj.lastInteraction = Date.now()
     return
 
 ############################################################
@@ -79,5 +88,6 @@ export isValid = (k) ->
 export checkSession = (key) ->
     if typeof key == "string" and key.length == 64 and keyToSession[key]?
         keyToSession.letForget(key) ## reset memory decay
+        keyToSession[key].lastInteraction = Date.now()
         return key
     return createNewSession()

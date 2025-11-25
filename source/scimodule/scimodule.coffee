@@ -28,9 +28,8 @@ wsS.on("connection", onConnect)
 ############################################################
 wsUpgradeHandler = (req, sock, head) ->
     if isBlocked(req)
-        # sock.write('HTTP/1.1 403 Forbidden\r\n\r\n')
-        # sock.destroy()
-        sock.end('HTTP/1.1 403 Forbidden\r\n\r\n')
+        sock.write('HTTP/1.1 403 Forbidden\r\n\r\n')
+        sock.destroy()
         return
     wsS.handleUpgrade(req, sock, head, ((ws) -> wsS.emit("connection", ws, req)))
     return
