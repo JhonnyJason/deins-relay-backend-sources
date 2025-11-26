@@ -5,18 +5,21 @@ import { createLogFunctions } from "thingy-debug"
 #endregion
 
 ############################################################
+#region Modules from the Environment
 import * as bs from "./bugsnitch.js"
 ############################################################
 import * as chat from "./chatrelaymodule.js"
 import * as sess from "./sessionmodule.js"
 import * as cfg from "./configmodule.js"
 
+#endregion
+
 ############################################################
 export sendSessionState = (conn) ->
-    log "endSessionState"
+    log "sendSessionState"
     key = conn.key
-    if !sess.isValid(key) then return conn.noticeState("InvalidKey")
-    conn.noticeState(sess.getState(key))
+    if !key? or !sess.isValid(key) then return conn.noticeState("InvalidKey")
+    conn.noticeState(sess.getState(key)+" "+key)
     return
 
 export authorizationProcess = (conn, key) ->
@@ -55,11 +58,21 @@ export interferenceProcess = (conn, msg) ->
         sess.addUserMessage(key, msg)
         sess.setState(key, "Processing")
         await chat.generateStreamResponse(sess.getMessages(key), conn)
-        sess.setState(key, "Idle")
+        sess.setAckTimeout(key)
+        sess.setState(key, "WaitingAck")
         return
     catch err then console.error(err)
     return 
 
+############################################################
+export solidifyResponse = (conn) ->
+    log "solidifyResponse"
+    key = conn.key
+    sess.clearAckTimeout(key)
+    sess.setState(key, "Idle")
+    return
+
+############################################################
 export resetHistoryProcess = (conn) ->
     log "resetHistoryProcess"
     key = conn.key

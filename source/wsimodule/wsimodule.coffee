@@ -8,7 +8,8 @@ import { createLogFunctions } from "thingy-debug"
 import * as bs from "./bugsnitch.js"
 ############################################################
 import {
-    authorizationProcess, interferenceProcess, resetHistoryProcess
+    authorizationProcess, interferenceProcess, resetHistoryProcess,
+    sendSessionState, solidifyResponse
 } from "./commandprocessing.js"
 
 ############################################################
@@ -61,6 +62,7 @@ class SocketConnection
                 when "ping" then @socket.send("pong")
                 when "authorizeMe" then authorizationProcess(this, arg)
                 when "interference" then interferenceProcess(this, arg)
+                when "interferenceAck" then solidifyResponse(this) 
                 when "resetHistory" then resetHistoryProcess(this, arg)
                 when "sendState" then sendSessionState(this)
                 else throw new Error("unknown command: #{command}")
@@ -82,6 +84,7 @@ class SocketConnection
     aiResponseStart: => @socket.send("ai:")
     aiResponseStream: (fragment) => @socket.send("ai+ "+fragment)
     aiResponseEnd: => @socket.send("ai/")
+    # aiResponseEnd: (fullResponse) => @socket.send("ai/ "+fullResponse)
 
     setSession: (key) =>
         @key = key

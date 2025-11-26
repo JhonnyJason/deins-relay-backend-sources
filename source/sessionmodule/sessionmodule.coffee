@@ -14,10 +14,7 @@ import { makeForgetable } from "memory-decay"
 ############################################################
 keyToSession = Object.create(null)
 ttlSessionMS = 7_200_000 # ~2h
-
-############################################################
-FROMUSER = 0
-FROMASSBOTO = 1
+ackTimeoutMS = 120_000 # ~2m
 
 ############################################################
 export initialize = (c) ->
@@ -50,6 +47,14 @@ createNewSession = ->
     keyToSession.letForget(key)
     return key
 
+removeLastAssMessage = (sessObj) ->
+    log "removeLastAssMessage"
+    msg = sessObj.msgs[msgs.length - 1]
+    if msg? and msg.role == "assistant" then sessObj.msgs.pop()
+    # sessObj.state = "Idle"
+    sessObj.state = "MissedAck"
+    return
+
 ############################################################
 export clearSession = (k) -> 
     sessionObj = keyToSession[k]
@@ -73,7 +78,20 @@ export addUserMessage = (k, msg) ->
     return
 
 ############################################################
+export setAckTimeout = (k) ->
+    log "setAckTimeout"
+    sessionObj = keyToSession[k]
+    onTimeout = -> removeLastAssMessage(sessionObj)
+    sessionObj.ackTimeout = setTimeout(onTimeout, ackTimeoutMS)
+    return
+
+export clearAckTimeout = (k) ->
+    clearTimeout(keyToSession[k].ackTimeout)
+    return
+
+############################################################
 export getMessages = (k) -> keyToSession[k].msgs
+
 ############################################################
 export getState = (k) -> keyToSession[k].state
 export setState = (k, state) -> keyToSession[k].state = state
