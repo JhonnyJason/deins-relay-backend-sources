@@ -6,6 +6,7 @@ modulesToDebug = {
     earlyblockermodule: true
     chatrelaymodule: true
     commandprocessing: true
+    scicore: true
     scimodule: true
     sessionmodule: true
     startupmodule: true
